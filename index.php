@@ -61,15 +61,10 @@
         <input type="number" step="0.01" name="amount[]" class="form-control" required />
       </div>
 
-      <div style="width: 120px;">
-        <label class="form-label">Price</label>
-        <input type="number" step="0.01" name="price[]" class="form-control" required />
-      </div>
-
       <div style="width: 150px;">
         <label class="form-label">Entry Method</label>
         <select name="entry_method[]" class="form-control" required>
-          <option value="">Select method</option>
+        
           <option value="wash">Wash</option>
           <option value="dry_clean">Dry Clean</option>
           <option value="iron">Iron</option>
@@ -85,9 +80,10 @@
   <button type="button" id="add-cloth-item" class="btn btn-secondary mb-4">Add More Cloth Items</button>
 
   <div class="mb-3">
-    <label class="form-label">Total Kilograms</label>
-    <input type="text" name="kilo" class="form-control" />
-  </div>
+  <label class="form-label">Total Kilograms</label>
+  <input type="text" name="kilograms" class="form-control" />
+</div>
+
 
   <div class="mb-3">
     <label class="form-label">Cloth Code</label>
@@ -108,6 +104,13 @@
     <label class="form-label">Delivery Date</label>
     <input type="date" name="delivery_date" class="form-control" required />
   </div>
+  <!-- Total price input (for the entire entry) -->
+<div class="mb-3">
+  <label class="form-label">Total Price</label>
+  <input type="number" step="0.01" name="total_price" class="form-control" required />
+</div>
+
+
 
   <button type="submit" class="btn btn-success">Add Clothing Entry</button>
 </form>
