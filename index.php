@@ -15,26 +15,34 @@
   </style>
 </head>
 <body class="bg-light">
+<nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+  <div class="container-fluid">
+    <a class="navbar-brand" href="home.php">Laundromat Records</a>
+    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+      <span class="navbar-toggler-icon"></span>
+    </button>
+    <div class="collapse navbar-collapse" id="navbarNav">
+      <ul class="navbar-nav ms-auto">
+        <li class="nav-item">
+          <a class="nav-link active" aria-current="page" href="home.php">Home</a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link" href="register_customerr.php">Add Customer</a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link" href="index.php">Add Entry</a>
+        </li>
+        <li class="nav-item">
+         
+        </li>
+      </ul>
+    </div>
+  </div>
+</nav>
 
 <div class="container mt-4">
-  <h2 class="mb-4">Customer Registration & Clothing Entry</h2>
+  <h2 class="mb-4"> Clothing Entry</h2>
 <!-- Customer Registration Form -->
-<form action="register_customer.php" method="POST" class="border p-4 mb-5 bg-white rounded">
-  <h4>Customer Info</h4>
-  <div class="mb-3">
-    <label for="name" class="form-label">Full Name</label>
-    <input type="text" name="name" id="name" class="form-control" required />
-  </div>
-  <div class="mb-3">
-    <label for="phone" class="form-label">Phone Number</label>
-    <input type="text" name="phone" id="phone" class="form-control" required />
-  </div>
-  <div class="mb-3">
-    <label for="id_code" class="form-label">ID Code (optional)</label>
-    <input type="text" name="id_code" id="id_code" class="form-control" />
-  </div>
-  <button type="submit" class="btn btn-primary">Register Customer</button>
-</form>
 
 <!-- Clothing Entry Form -->
 <form action="add_clothing.php" method="POST" class="border p-4 bg-white rounded" id="clothing_form">

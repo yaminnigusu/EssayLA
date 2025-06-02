@@ -27,10 +27,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $entry_date, $delivery_date, $total_kilo, $price, $id
   ]);
 
-  header("Location: view_entries.php"); // Change to your listing page
+  header("Location: home.php"); // Change to your listing page
   exit;
 } else {
-  $id = $_GET['entry_id'] ?? null;
+  $id = $_GET['id'] ?? null;
 
 if (!$id) {
     die("Entry ID not provided");
@@ -98,7 +98,7 @@ if (!$id) {
     </div>
 
     <button type="submit" class="btn btn-primary">Update Entry</button>
-    <a href="view_entries.php" class="btn btn-secondary">Cancel</a>
+    <a href="home.php" class="btn btn-secondary">Cancel</a>
   </form>
 </div>
 </body>

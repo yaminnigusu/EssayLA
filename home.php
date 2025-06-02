@@ -11,11 +11,40 @@ include 'db.php';
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" />
 </head>
 <body class="bg-light">
+  <!-- Navigation Bar -->
+<nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+  <div class="container-fluid">
+    <a class="navbar-brand" href="home.php">Laundromat Records</a>
+    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+      <span class="navbar-toggler-icon"></span>
+    </button>
+    <div class="collapse navbar-collapse" id="navbarNav">
+      <ul class="navbar-nav ms-auto">
+        <li class="nav-item">
+          <a class="nav-link active" aria-current="page" href="home.php">Home</a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link" href="register_customerr.php">Add Customer</a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link" href="index.php">Add Entry</a>
+        </li>
+        <li class="nav-item">
+         
+        </li>
+      </ul>
+    </div>
+  </div>
+</nav>
+
 
 <div class="container mt-4">
-  <h2 class="mb-4">All Customers & Clothing Entries</h2>
+  <h2 class="mb-4">All Customers & Undelivered Clothing Entries</h2>
 
   <?php
+  // Adjust your database connection accordingly
+  // Assuming $pdo is your PDO instance
+
   $stmt = $pdo->query("
     SELECT 
       c.id AS customer_id,
@@ -31,9 +60,11 @@ include 'db.php';
       ce.entry_date,
       ce.delivery_date,
       ce.total_kilo,
-      ce.price
+      ce.price,
+      ce.delivered_status
     FROM customers c
-    LEFT JOIN clothing_entries ce ON c.id = ce.customer_id
+    LEFT JOIN clothing_entries ce 
+      ON c.id = ce.customer_id AND ce.delivered_status = 0
     ORDER BY c.id DESC, ce.entry_date DESC, ce.delivery_date DESC, ce.id DESC
   ");
 
@@ -76,69 +107,77 @@ include 'db.php';
     }
   ?>
 
-  <?php foreach ($groupedEntries as $customerId => $customerData): ?>
-    <div class="card mb-4 shadow-sm">
-      <div class="card-body">
-        <h5 class="card-title">
-          <?= htmlspecialchars($customerData['info']['name']) ?>
-          <small class="text-muted">(<?= htmlspecialchars($customerData['info']['phone']) ?>)</small>
-        </h5>
-        <p class="card-text">Customer ID Code: <?= htmlspecialchars($customerData['info']['id_code']) ?: 'N/A' ?></p>
+  <div class="row">
+    <?php foreach ($groupedEntries as $customerId => $customerData): ?>
+      <div class="col-md-6 col-lg-4 mb-4">
+        <div class="card h-100 shadow-sm">
+          <div class="card-body">
+            <h5 class="card-title">
+              <?= htmlspecialchars($customerData['info']['name']) ?>
+              <small class="text-muted">(<?= htmlspecialchars($customerData['info']['phone']) ?>)</small>
+            </h5>
+            <p class="card-text">Customer ID Code: <?= htmlspecialchars($customerData['info']['id_code']) ?: 'N/A' ?></p>
 
-        <?php if (empty($customerData['entries'])): ?>
-          <p class="fst-italic text-muted">No clothing entries found for this customer.</p>
-        <?php else: ?>
-          <p><strong>Total Entries: <?= count($customerData['entries']) ?></strong></p>
+            <?php if (empty($customerData['entries'])): ?>
+              <p class="fst-italic text-muted">No undelivered clothing entries found for this customer.</p>
+            <?php else: ?>
+              <p><strong>Total Undelivered Entries: <?= count($customerData['entries']) ?></strong></p>
 
-          <?php 
-          $entryNumber = 1;
-          foreach ($customerData['entries'] as $dateKey => $entryGroup): 
-            $firstItem = $entryGroup['items'][0];
-          ?>
-            <h6 class="mt-3">
-              Entry #<?= $entryNumber++ ?>: 
-              Entry Date: <?= htmlspecialchars($entryGroup['entry_date']) ?> | 
-              Delivery Date: <?= htmlspecialchars($entryGroup['delivery_date']) ?>
-            </h6>
+              <?php 
+              $entryNumber = 1;
+              foreach ($customerData['entries'] as $dateKey => $entryGroup): 
+                $firstItem = $entryGroup['items'][0];
+              ?>
+                <h6 class="mt-3">
+                  Entry #<?= $entryNumber++ ?>:
+                  Entry Date: <?= htmlspecialchars($entryGroup['entry_date']) ?> |
+                  Delivery Date: <?= htmlspecialchars($entryGroup['delivery_date']) ?>
+                </h6>
 
-            <p>
-              <strong>Color Code:</strong> <?= htmlspecialchars($firstItem['cloth_code'] ?: 'N/A') ?> &nbsp;&nbsp;|&nbsp;&nbsp;
-              <strong>ID Code:</strong> <?= htmlspecialchars($firstItem['id_code'] ?: 'N/A') ?> &nbsp;&nbsp;|&nbsp;&nbsp;
-              <strong>Total Kilos:</strong> <?= $firstItem['total_kilo'] !== null ? htmlspecialchars($firstItem['total_kilo']) : 'N/A' ?> &nbsp;&nbsp;|&nbsp;&nbsp;
-              <strong>Price:</strong> <?= isset($firstItem['price']) ? number_format($firstItem['price'], 2) : 'N/A' ?>
-            </p>
+                <p>
+                  <strong>Color Code:</strong> <?= htmlspecialchars($firstItem['cloth_code'] ?: 'N/A') ?> &nbsp;&nbsp;|&nbsp;&nbsp;
+                  <strong>ID Code:</strong> <?= htmlspecialchars($firstItem['id_code'] ?: 'N/A') ?> &nbsp;&nbsp;|&nbsp;&nbsp;
+                  <strong>Total Kilos:</strong> <?= $firstItem['total_kilo'] !== null ? htmlspecialchars($firstItem['total_kilo']) : 'N/A' ?> &nbsp;&nbsp;|&nbsp;&nbsp;
+                  <strong>Price:</strong> <?= isset($firstItem['price']) ? number_format($firstItem['price'], 2) : 'N/A' ?>
+                </p>
 
-            <table class="table table-bordered mt-2">
-              <thead>
-                <tr>
-                  <th>Cloth Item</th>
-                  <th>Quantity</th>
-                  <th>Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                <?php foreach ($entryGroup['items'] as $item): ?>
-                  <tr>
-                    <td><?= htmlspecialchars($item['cloth_item']) ?></td>
-                    <td><?= htmlspecialchars($item['measurement']) ?></td>
-                    <td>
-                      <a href="edit_entry.php?id=<?= $item['entry_id'] ?>" class="btn btn-warning btn-sm">Edit</a>
-                      <a href="delete_entry.php?id=<?= $item['entry_id'] ?>" class="btn btn-danger btn-sm" onclick="return confirm('Are you sure you want to delete this entry?');">Delete</a>
-                    </td>
-                  </tr>
-                <?php endforeach; ?>
-              </tbody>
-            </table>
-          <?php endforeach; ?>
-        <?php endif; ?>
+                <table class="table table-bordered table-sm mt-2">
+                  <thead>
+                    <tr>
+                      <th>Cloth Item</th>
+                      <th>Quantity</th>
+                      <th>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <?php foreach ($entryGroup['items'] as $item): ?>
+                      <tr>
+                        <td><?= htmlspecialchars($item['cloth_item']) ?></td>
+                        <td><?= htmlspecialchars($item['measurement']) ?></td>
+                        <td>
+                          <a href="edit_entry.php?id=<?= $item['entry_id'] ?>" class="btn btn-warning btn-sm">Edit</a>
+                          <a href="delete_entry.php?id=<?= $item['entry_id'] ?>" class="btn btn-danger btn-sm" onclick="return confirm('Are you sure you want to delete this entry?');">Delete</a>
+                        </td>
+                      </tr>
+                    <?php endforeach; ?>
+                  </tbody>
+                </table>
+              <?php endforeach; ?>
+            <?php endif; ?>
+          </div>
+        </div>
       </div>
-    </div>
-  <?php endforeach; ?>
+    <?php endforeach; ?>
+  </div>
 
   <?php else: ?>
-    <div class="alert alert-info">No records found.</div>
+    <div class="alert alert-info">No undelivered records found.</div>
   <?php endif; ?>
 </div>
+
+
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 
 </body>
 </html>
