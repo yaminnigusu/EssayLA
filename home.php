@@ -1,6 +1,52 @@
 <?php
 // home.php
 include 'db.php';
+// Fetch Total Customers
+$totalCustomers = $pdo->query("SELECT COUNT(*) FROM customers")->fetchColumn();
+
+// Fetch Total Entries
+$totalEntries = $pdo->query("SELECT COUNT(*) FROM clothing_entries")->fetchColumn();
+
+// Fetch Most Frequent Customer
+// Fetch Most Frequent Customer by Total Kilos
+$topCustomerStmt = $pdo->query("
+  SELECT 
+    c.name, 
+    c.phone, 
+    COUNT(*) AS entry_count,
+    SUM(ce.total_kilo) AS total_kilos
+  FROM clothing_entries ce
+  JOIN customers c ON ce.customer_id = c.id
+  WHERE ce.total_kilo IS NOT NULL
+  GROUP BY ce.customer_id
+  ORDER BY total_kilos DESC
+  LIMIT 1
+");
+$topCustomer = $topCustomerStmt->fetch(PDO::FETCH_ASSOC);
+
+// Fetch Most Common Cloth Item
+$topItemStmt = $pdo->query("
+  SELECT cloth_item, COUNT(*) AS item_count
+  FROM clothing_entries
+  GROUP BY cloth_item
+  ORDER BY item_count DESC
+  LIMIT 1
+");
+$topItem = $topItemStmt->fetch(PDO::FETCH_ASSOC);
+// Get current month’s stat
+$currentMonth = date('Y-m');
+$stmt = $pdo->prepare("
+    SELECT c.name, c.phone, ms.entry_count, ms.total_kilos
+    FROM monthly_stats ms
+    JOIN customers c ON c.id = ms.customer_id
+    WHERE ms.month_year = ?
+");
+$stmt->execute([$currentMonth]);
+$topMonthly = $stmt->fetch(PDO::FETCH_ASSOC);
+// Fetch all subscription statuses
+$subStmt = $pdo->query("SELECT customer_id FROM customer_subscriptions WHERE CURDATE() BETWEEN start_date AND end_date");
+$subscribedCustomers = $subStmt->fetchAll(PDO::FETCH_COLUMN);
+
 ?>
 
 <!DOCTYPE html>
@@ -9,9 +55,15 @@ include 'db.php';
   <meta charset="UTF-8" />
   <title>Laundromat Records</title>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" />
+  <style>
+    .search-box {
+      max-width: 400px;
+    }
+  </style>
 </head>
 <body class="bg-light">
-  <!-- Navigation Bar -->
+
+<!-- Navigation Bar -->
 <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
   <div class="container-fluid">
     <a class="navbar-brand" href="home.php">Laundromat Records</a>
@@ -20,30 +72,96 @@ include 'db.php';
     </button>
     <div class="collapse navbar-collapse" id="navbarNav">
       <ul class="navbar-nav ms-auto">
-        <li class="nav-item">
-          <a class="nav-link active" aria-current="page" href="home.php">Home</a>
-        </li>
-        <li class="nav-item">
-          <a class="nav-link" href="register_customerr.php">Add Customer</a>
-        </li>
-        <li class="nav-item">
-          <a class="nav-link" href="index.php">Add Entry</a>
-        </li>
-        <li class="nav-item">
-         
-        </li>
+        <li class="nav-item"><a class="nav-link active" href="home.php">Home</a></li>
+        <li class="nav-item"><a class="nav-link" href="register_customerr.php">Add Customer</a></li>
+        <li class="nav-item"><a class="nav-link" href="index.php">Add Entry</a></li>
       </ul>
     </div>
   </div>
 </nav>
 
-
 <div class="container mt-4">
   <h2 class="mb-4">All Customers & Undelivered Clothing Entries</h2>
+  <div class="row mb-4">
+    <?php if ($topMonthly): ?>
+  <div class="alert alert-info">
+    <strong>Top Customer This Month:</strong> <?= htmlspecialchars($topMonthly['name']) ?> (<?= htmlspecialchars($topMonthly['phone']) ?>)<br>
+    <?= $topMonthly['entry_count'] ?> entries | <?= number_format($topMonthly['total_kilos'], 2) ?> kg
+  </div>
+<?php endif; ?>
+  <div class="col-md-3">
+    <div class="card text-white bg-primary mb-3">
+      <div class="card-body">
+        <h5 class="card-title">Total Customers</h5>
+        <p class="card-text fs-4"><?= $totalCustomers ?></p>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-md-3">
+    <div class="card text-white bg-success mb-3">
+      <div class="card-body">
+        <h5 class="card-title">Total Clothing Entries</h5>
+        <p class="card-text fs-4"><?= $totalEntries ?></p>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-md-3">
+    <div class="card text-white bg-warning mb-3">
+      <div class="card-body">
+        <h5 class="card-title">Top Customer</h5>
+        <?php if ($topCustomer): ?>
+  <p class="card-text mb-0"><strong><?= htmlspecialchars($topCustomer['name']) ?></strong></p>
+  <small class="text-light">
+    <?= htmlspecialchars($topCustomer['phone']) ?><br>
+    <?= $topCustomer['entry_count'] ?> entries | <?= number_format($topCustomer['total_kilos'], 2) ?> kg
+  </small>
+<?php else: ?>
+  <p class="card-text">N/A</p>
+<?php endif; ?>
+
+      </div>
+    </div>
+  </div>
+
+  <div class="col-md-3">
+    <div class="card text-white bg-secondary mb-3">
+      <div class="card-body">
+        <h5 class="card-title">Top Cloth Item</h5>
+        <?php if ($topItem): ?>
+          <p class="card-text"><?= htmlspecialchars($topItem['cloth_item']) ?> (<?= $topItem['item_count'] ?> times)</p>
+        <?php else: ?>
+          <p class="card-text">N/A</p>
+        <?php endif; ?>
+      </div>
+    </div>
+  </div>
+</div>
+
+  <!-- 🔍 Search Filter -->
+ <!-- 🔍 Search Filter -->
+<div class="row mb-4">
+  <div class="col-md-8">
+    <input type="text" id="searchInput" class="form-control" placeholder="Search by name or phone...">
+  </div>
+  <div class="col-md-4">
+    <select id="subscriptionFilter" class="form-select">
+      <option value="">All</option>
+      <option value="subscribed">Subscribed</option>
+      <option value="not_subscribed">Not Subscribed</option>
+    </select>
+  </div>
+</div>
+
 
   <?php
-  // Adjust your database connection accordingly
-  // Assuming $pdo is your PDO instance
+  $subStmt = $pdo->query("
+  SELECT customer_id 
+  FROM customer_subscriptions 
+  WHERE CURDATE() BETWEEN start_date AND end_date
+");
+$subscribedCustomers = $subStmt->fetchAll(PDO::FETCH_COLUMN);
 
   $stmt = $pdo->query("
     SELECT 
@@ -106,78 +224,100 @@ include 'db.php';
       }
     }
   ?>
+<div class="row" id="cardContainer">
+ <?php foreach ($groupedEntries as $customerId => $customerData): 
+  $isSubscribed = in_array($customerId, $subscribedCustomers);
+?>
+  <div class="col-md-6 col-lg-4 mb-4 customer-card" 
+       data-name="<?= strtolower($customerData['info']['name']) ?>"
+       data-phone="<?= $customerData['info']['phone'] ?>"
+       data-subscription="<?= $isSubscribed ? 'subscribed' : 'not_subscribed' ?>">
+    <div class="card h-100 shadow-sm">
+      <div class="card-body">
+        <h5 class="card-title customer-name mb-1">
+          <?= htmlspecialchars($customerData['info']['name']) ?>
+          <small class="text-muted">(<?= htmlspecialchars($customerData['info']['phone']) ?>)</small>
+        </h5>
+        <p class="mb-1">Customer ID Code: <?= htmlspecialchars($customerData['info']['id_code']) ?: 'N/A' ?></p>
+        <p class="fw-bold mb-2 text-success">Total Undelivered Entries: <?= count($customerData['entries']) ?></p>
 
-  <div class="row">
-    <?php foreach ($groupedEntries as $customerId => $customerData): ?>
-      <div class="col-md-6 col-lg-4 mb-4">
-        <div class="card h-100 shadow-sm">
-          <div class="card-body">
-            <h5 class="card-title">
-              <?= htmlspecialchars($customerData['info']['name']) ?>
-              <small class="text-muted">(<?= htmlspecialchars($customerData['info']['phone']) ?>)</small>
-            </h5>
-            <p class="card-text">Customer ID Code: <?= htmlspecialchars($customerData['info']['id_code']) ?: 'N/A' ?></p>
+        <?php if ($isSubscribed): ?>
+          <span class="badge bg-success mb-2">Subscribed</span>
+        <?php else: ?>
+          <span class="badge bg-secondary mb-2">Not Subscribed</span>
+        <?php endif; ?>
 
-            <?php if (empty($customerData['entries'])): ?>
-              <p class="fst-italic text-muted">No undelivered clothing entries found for this customer.</p>
-            <?php else: ?>
-              <p><strong>Total Undelivered Entries: <?= count($customerData['entries']) ?></strong></p>
-
-              <?php 
-              $entryNumber = 1;
-              foreach ($customerData['entries'] as $dateKey => $entryGroup): 
-                $firstItem = $entryGroup['items'][0];
-              ?>
-                <h6 class="mt-3">
-                  Entry #<?= $entryNumber++ ?>:
-                  Entry Date: <?= htmlspecialchars($entryGroup['entry_date']) ?> |
-                  Delivery Date: <?= htmlspecialchars($entryGroup['delivery_date']) ?>
-                </h6>
-
-                <p>
-                  <strong>Color Code:</strong> <?= htmlspecialchars($firstItem['cloth_code'] ?: 'N/A') ?> &nbsp;&nbsp;|&nbsp;&nbsp;
-                  <strong>ID Code:</strong> <?= htmlspecialchars($firstItem['id_code'] ?: 'N/A') ?> &nbsp;&nbsp;|&nbsp;&nbsp;
-                  <strong>Total Kilos:</strong> <?= $firstItem['total_kilo'] !== null ? htmlspecialchars($firstItem['total_kilo']) : 'N/A' ?> &nbsp;&nbsp;|&nbsp;&nbsp;
-                  <strong>Price:</strong> <?= isset($firstItem['price']) ? number_format($firstItem['price'], 2) : 'N/A' ?>
-                </p>
-
-                <table class="table table-bordered table-sm mt-2">
-                  <thead>
-                    <tr>
-                      <th>Cloth Item</th>
-                      <th>Quantity</th>
-                      <th>Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <?php foreach ($entryGroup['items'] as $item): ?>
-                      <tr>
-                        <td><?= htmlspecialchars($item['cloth_item']) ?></td>
-                        <td><?= htmlspecialchars($item['measurement']) ?></td>
-                        <td>
-                          <a href="edit_entry.php?id=<?= $item['entry_id'] ?>" class="btn btn-warning btn-sm">Edit</a>
-                          <a href="delete_entry.php?id=<?= $item['entry_id'] ?>" class="btn btn-danger btn-sm" onclick="return confirm('Are you sure you want to delete this entry?');">Delete</a>
-                        </td>
-                      </tr>
-                    <?php endforeach; ?>
-                  </tbody>
-                </table>
-              <?php endforeach; ?>
-            <?php endif; ?>
-          </div>
-        </div>
+        <a href="customer_details.php?id=<?= $customerId ?>" class="btn btn-outline-primary btn-sm">View Details</a>
       </div>
-    <?php endforeach; ?>
+    </div>
   </div>
-
-  <?php else: ?>
-    <div class="alert alert-info">No undelivered records found.</div>
-  <?php endif; ?>
-</div>
-
+<?php endforeach; ?>
 
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+  const searchInput = document.getElementById("searchInput");
+  const filterSelect = document.getElementById("subscriptionFilter");
+  const cards = document.querySelectorAll(".customer-card");
+
+  function filterCards() {
+    const searchTerm = searchInput.value.toLowerCase();
+    const filterValue = filterSelect.value;
+
+    cards.forEach(card => {
+      const name = card.dataset.name;
+      const phone = card.dataset.phone;
+      const subscription = card.dataset.subscription;
+
+      const matchesSearch = name.includes(searchTerm) || phone.includes(searchTerm);
+      const matchesFilter = !filterValue || subscription === filterValue;
+
+      if (matchesSearch && matchesFilter) {
+        card.style.display = "";
+      } else {
+        card.style.display = "none";
+      }
+    });
+  }
+
+  searchInput.addEventListener("input", filterCards);
+  filterSelect.addEventListener("change", filterCards);
+});
+</script>
+
+<!-- 🔎 Live Search Script -->
+<script>
+  const searchInput = document.getElementById('searchInput');
+  const cards = document.querySelectorAll('.customer-card');
+
+  searchInput.addEventListener('keyup', function () {
+    const term = this.value.toLowerCase();
+
+    cards.forEach(card => {
+      const name = card.querySelector('.customer-name').textContent.toLowerCase();
+      const phone = card.querySelector('.customer-phone').textContent.toLowerCase();
+
+      if (name.includes(term) || phone.includes(term)) {
+        card.style.display = 'block';
+      } else {
+        card.style.display = 'none';
+      }
+    });
+  });
+</script>
+<script>
+  document.querySelectorAll('.toggle-details').forEach(card => {
+    card.addEventListener('click', () => {
+      const targetId = card.getAttribute('data-target');
+      const details = document.getElementById(targetId);
+      if (details) {
+        details.style.display = details.style.display === 'none' ? 'block' : 'none';
+      }
+    });
+  });
+</script>
 
 </body>
 </html>
+<?php endif; ?>
